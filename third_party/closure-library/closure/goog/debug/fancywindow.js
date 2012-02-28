@@ -133,7 +133,7 @@ goog.debug.FancyWindow.prototype.openOptions_ = function() {
     el.appendChild(div);
   }
 
-  this.dh_.getElement('options').style.display = 'block';
+  this.dh_.getElement('APP_OPTIONS').style.display = 'block';
   return false;
 };
 
@@ -169,7 +169,7 @@ goog.debug.FancyWindow.prototype.getDropDown_ = function(id, selected) {
  * @private
  */
 goog.debug.FancyWindow.prototype.closeOptions_ = function() {
-  this.dh_.getElement('options').style.display = 'none';
+  this.dh_.getElement('APP_OPTIONS').style.display = 'none';
   var loggers = goog.debug.FancyWindow.getLoggers_();
   var dh = this.dh_;
   for (var i = 0; i < loggers.length; i++) {

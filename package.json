@@ -1,8 +1,8 @@
 {
-  "name": "nclosure",
-  "description": "Server-side Google Closure with Node.js",
-  "author": "Guido Tapia <guido@tapia.com.au>",
-  "url":"https://github.com/gatapia/nclosure",
+  "name": "nclosure-d",
+  "description": "Based on nclosure server-side Google Closure with Node.js",
+  "author": "Zelenetskiy Dmitry <dmitry.zelenetskiy@gmail.com>",
+  "url":"https://github.com/hunterman/nclosure",
   "directories": {
     "lib": "./lib",
     "lib": "./third_party",
@@ -13,10 +13,10 @@
     "cli":"*"
   },
   "main": "./lib/nclosure",
-  "version": "0.4.2",
-  "engines": { "node": ">=0.3.0-pre" },
+  "version": "0.0.1-alpha",
+  "engines": { "node": ">=0.6.11" },
   "repository": { "type": "git",
-                 "url" : "git://github.com/gatapia/nclosure.git" },
+                 "url" : "git://github.com/hunterman/nclosure.git" },
   "licenses": [ { "type": "Apache License, Version 2.0",
                  "url": "http://www.apache.org/licenses/LICENSE-2.0" } ]
 }
