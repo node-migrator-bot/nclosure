@@ -178,7 +178,8 @@ nclosure.nccompile.prototype.runDependencies_ = function () {
                 console.error(err.stack);
                 throw err;
             }
-            self.runCompilation_();
+            // TODO: remove this?
+            // self.runCompilation_();
         });
 };
 
@@ -262,7 +263,8 @@ nclosure.nccompile.prototype.createTmpFile_ = function (contents) {
  * @param {function(Error=):undefined=} callback The callback to call on exit.
  */
 nclosure.nccompile.prototype.runCommand_ = function (clArgs, command, targetFile, bashInstructions, formatOutput, callback) {
-    var exec = PATH.resolve(PATH.join(NCLOSURE.getOption('closureBasePath'), '..', 'bin', 'build', command));
+    //var exec = PATH.resolve(PATH.join(NCLOSURE.getOption('closureBasePath'), '..', 'bin', 'build', command);
+    var exec = PATH.join(PATH.relative(process.cwd(), PATH.resolve(PATH.join(NCLOSURE.getOption('closureBasePath'), '..', 'bin', 'build'))), command);
     exec += ' ' + clArgs.join(' ');
 
     var self = this;
@@ -353,12 +355,12 @@ nclosure.nccompile.prototype.getCompilerClArgs_ = function () {
 nclosure.nccompile.prototype.addAdditionalRoots_ = function (addedPaths, clArgs, wPrefix) {
         if (NCLOSURE.getOption('additionalCompileRoots')) {
             goog.array.forEach(NCLOSURE.getOption('additionalCompileRoots'), function (root) {
-                this.addRoot_(addedPaths, clArgs, root, wPrefix);
+                this.addRoot_(addedPaths, clArgs, root, process.cwd(), wPrefix);
             }, this);
         } else if (NCLOSURE.getOption('additionalDeps')) {
             // Only try to guess roots if additionalCompileRoots not specified
             goog.array.forEach(NCLOSURE.getOption('additionalDeps'), function (dep) {
-                this.addRoot_(addedPaths, clArgs, PATH.dirname(dep), wPrefix);
+                this.addRoot_(addedPaths, clArgs, PATH.relative(PATH.resolve(process.cwd()), PATH.dirname(dep)), wPrefix);
             }, this);
         }
         // Now we sort in length order (shortest path first) and see if we have
@@ -393,50 +395,22 @@ nclosure.nccompile.prototype.addRoot_ = function (addedPaths, clArgs, path, wPre
     if (!goog.isDefAndNotNull(realpath)) {
         return;
     }
-    var realClosureBaseDir = FS.realpathSync(NCLOSURE.getOption('closureBasePath'));
-
+    //var realClosureBaseDir = PATH.relative(process.cwd(), FS.realpathSync(NCLOSURE.getOption('closureBasePath')));
+    if (path.trim() == "" || realpath.trim() == "") {
+        return;
+    }
+    var relativePath = PATH.relative(process.cwd(), realpath);
+    if (relativePath == '') {
+        clArgs.push('--root=' + path);
+        return;
+    }
     var root = wPrefix ?
         ('"--root_with_prefix=' + path + ' ' +
-        //this.getPathToDir_(realpath, realClosureBaseDir) + '"') :
-        realClosureBaseDir + '"') :
+        //realClosureBaseDir + '"') :
+            relativePath + '"') :
             ('--root=' + realpath);
     clArgs.push(root);
 };
-
-
-/**
- * @private
- * @param {string} realFrom The absolute from path.
- * @param {string} realTo The absolute destination path.
- * @return {string} The path to take between the directories.
- * @deprecated
- */
-nclosure.nccompile.prototype.getPathToDir_ = function (realFrom, realTo) {
-    var from = realFrom.split('/').reverse(),
-        to = realTo.split('/').reverse(),
-        fl = from.length - 1,
-        tl = to.length - 1,
-        path = [];
-
-    // first eliminate common root
-    while ((fl >= 0) && (tl >= 0) && (from[fl] === to[tl])) {
-        fl--;
-        tl--;
-    }
-
-    // for each remaining level in the home path, add a ..
-    for (; tl >= 0; tl--) {
-        path.push('..');
-    }
-
-    // for each level in the file path, add the path
-    for (; fl >= 0; fl--) {
-        path.push(from[fl]);
-    }
-
-    return path.join('/');
-};
-
 
 /**
  * @private
@@ -444,10 +418,10 @@ nclosure.nccompile.prototype.getPathToDir_ = function (realFrom, realTo) {
  *   dependency check operation.
  */
 nclosure.nccompile.prototype.getDepsClArgs_ = function () {
-    var dirname = PATH.dirname(this.fileToCompile_);
-    var addedPaths = [];
-    var clArgs = [];
-    this.addRoot_(addedPaths, clArgs, dirname, true);
+    var addedPaths = [],
+        clArgs = [];
+    //this.addRoot_(addedPaths, clArgs, PATH.relative(process.cwd(), PATH.dirname(this.fileToCompile_)), true);
+    this.addRoot_(addedPaths, clArgs, PATH.dirname(this.fileToCompile_), true);
     return this.addAdditionalRoots_(addedPaths, clArgs, true);
 };
 
@@ -469,19 +443,6 @@ nclosure.nccompile.prototype.isPathInMap_ = function (map, s) {
     }
     map.push(real);
     return real;
-};
-
-
-/**
- * @private
- * @param {string} file The file whose parent directory we are trying to find.
- * @return {string} The parent directory of the soecified file.
- * @deprecated
- */
-nclosure.nccompile.prototype.getDirectory_ = function (file) {
-    var pathIdx = file.lastIndexOf('/');
-    var path = pathIdx > 0 ? file.substring(0, pathIdx) : '.';
-    return path;
 };
 
 // Go!

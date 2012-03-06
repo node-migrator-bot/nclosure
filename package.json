@@ -13,7 +13,7 @@
     "cli":"*"
   },
   "main": "./lib/nclosure",
-  "version": "0.0.1-alpha",
+  "version": "0.0.1-beta",
   "engines": { "node": ">=0.6.11" },
   "repository": { "type": "git",
                  "url" : "git://github.com/hunterman/nclosure.git" },

@@ -1,6 +1,7 @@
 {
     "nodeDir":"../../../lib/node",
-    "additionalDeps":["../third_party/closure-library/third_party/closure/goog/deps.js"],
+    "additionalDeps":[],
+    "additionalCompileRoots": ["../third_party/closure-library/third_party/closure/goog/"],
     "closureBasePath":"../third_party/closure-library/closure/goog/",
     "jsdocToolkitDir":"../third_party/node-jsdoc-toolkit/",
     "compiler_jar":"../third_party/ignoregoogcompiler.jar",
