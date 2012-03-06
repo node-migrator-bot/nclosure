@@ -18,6 +18,7 @@
  *  annotation docs</a>.
  *
  * @author guido@tapia.com.au (Guido Tapia)
+ * @author dmitry.zelenetskiy@gmail.com (Dmitry Zelenetskiy)
  * @see <a href='http://code.google.com/closure/compiler/'>official docs</a>
  * @see <a href='http://code.google.com/closure/compiler/docs/js-for-compiler.html'>
  *    annotation docs</a>.
@@ -27,7 +28,6 @@
 /**
  * @private
  * @const
- * @type {nclosure.core}
  */
 var NCLOSURE = require('nclosure'),
     CLI = require('cli'),
@@ -149,8 +149,8 @@ nclosure.nccompile.prototype.init_ = function (cliArgs, options) {
     }
     if (this.compile_) {
         console.log('The -c [compile] flag is not fully operational yet.  Please ' +
-            'use cauting when running .min.js files as they are not yet ' +
-            'fully compatible with Node\'s require(...) syntaxt.');
+            'use caution when running .min.js files as they are not yet ' +
+            'fully compatible with Node\'s require(...) syntax.');
     }
 
     this.tmpFileName_ = this.fileToCompile_.replace('.js', '.tmp.js');
@@ -161,7 +161,7 @@ nclosure.nccompile.prototype.init_ = function (cliArgs, options) {
     var additionalSettingsFile = PATH.resolve(PATH.join(PATH.dirname(this.fileToCompile_), 'closure.json'));
     NCLOSURE.loadOptions(additionalSettingsFile);
 
-    var command = this.deps_ ? this.runDependencies_ : this.runCompilation_;
+    var command = this.deps_ != null ? this.runDependencies_ : this.runCompilation_;
     command.call(this);
 };
 
@@ -178,7 +178,7 @@ nclosure.nccompile.prototype.runDependencies_ = function () {
                 console.error(err.stack);
                 throw err;
             }
-            //self.runCompilation_();
+            self.runCompilation_();
         });
 };
 
@@ -186,12 +186,14 @@ nclosure.nccompile.prototype.runDependencies_ = function () {
  * @private
  */
 nclosure.nccompile.prototype.runCompilation_ = function () {
-    var fileContents = FS.readFileSync(this.fileToCompile_).toString();
+    var fileContents = FS.readFileSync(this.fileToCompile_).toString(),
+        bashInst = this.createTmpFile_(fileContents);
 
-    var bashInst = this.createTmpFile_(fileContents);
     FS.renameSync(this.fileToCompile_, this.fileToCompileIgnore_);
-    var clArgs = this.getCompilerClArgs_();
-    var verbose = this.verbose_;
+
+    var clArgs = this.getCompilerClArgs_(),
+        verbose = this.verbose_;
+
     this.runCommand_(clArgs, 'closurebuilder.py',
         this.compile_ ? this.compiledFileName_ : '', bashInst, function (output) {
             var lastArg = clArgs[clArgs.length - 1];
@@ -243,7 +245,7 @@ nclosure.nccompile.prototype.createTmpFile_ = function (contents) {
     var newCode = //'goog.require(\'nclosure\');' +
         (hasInst ? '\n' : '') +
             contents;
-    require('fs').writeFileSync(this.tmpFileName_, newCode);
+    FS.writeFileSync(this.tmpFileName_, newCode);
     return bashInst;
 };
 
@@ -304,15 +306,14 @@ nclosure.nccompile.prototype.runCommand_ = function (clArgs, command, targetFile
  * @return {Array.<string>} Any additional compiler args for the compilation
  *   operation.
  */
-nclosure.nccompile.prototype.getCompilerClArgs_ =
-    function () {
-        var path = NCLOSURE.getFileDirectory(this.fileToCompile_);
-        var addedPaths = [];
-        var clArgs = [];
-        this.addRoot_(addedPaths, clArgs, NCLOSURE.args.closureBasePath, false);
-        this.addRoot_(addedPaths, clArgs, path, false);
-        var libPath = NCLOSURE.getPath(__dirname, '../lib');
-        var binPath = NCLOSURE.getPath(__dirname, '../bin');
+nclosure.nccompile.prototype.getCompilerClArgs_ = function () {
+        var addedPaths = [],
+            clArgs = [];
+        this.addRoot_(addedPaths, clArgs, NCLOSURE.getOption('closureBasePath'), false);
+        this.addRoot_(addedPaths, clArgs, PATH.dirname(this.fileToCompile_), false);
+
+        var libPath = PATH.resolve(PATH.join(__dirname, '..', 'lib'));
+
         // lib allows all clases to use nclosure namepath and also
         // all the third_party libs
         this.addRoot_(addedPaths, clArgs, libPath, false);
@@ -320,30 +321,24 @@ nclosure.nccompile.prototype.getCompilerClArgs_ =
 
         clArgs.push('--input=' + this.tmpFileName_);
         clArgs.push('--output_mode=compiled');
-        clArgs.push('--compiler_jar=' + (NCLOSURE.args.compiler_jar ||
-            NCLOSURE.getPath(__dirname,
-                '../third_party/ignoregoogcompiler.jar')));
+        clArgs.push('--compiler_jar=' + (NCLOSURE.getOption('compiler_jar') ||
+            PATH.resolve(PATH.join(__dirname, '..', 'third_party', 'ignoregoogcompiler.jar'))));
 
         clArgs.push(
             '--compiler_flags=--js=' +
-                NCLOSURE.getPath(NCLOSURE.args.closureBasePath,
-                    'closure/goog/deps.js'),
+                PATH.join(NCLOSURE.getOption('closureBasePath'), 'deps.js'),
             '--compiler_flags=--externs=' +
-                NCLOSURE.getPath(libPath, 'externs.js'),
-            '--compiler_flags=--compilation_level=ADVANCED_OPTIMIZATIONS',
-            '--compiler_flags=--output_wrapper=' +
-                '"(function() {this.window=this;%output%})();"'
+                PATH.join(libPath, 'externs.js')
         );
 
-        if (NCLOSURE.args.additionalCompileOptions) {
-            NCLOSURE.args.additionalCompileOptions.forEach(function (opt) {
-                clArgs.push('--compiler_flags=' + opt);
-            });
-        }
-
-
-        return clArgs;
-    };
+    var additionalCompileOptions = NCLOSURE.getOption('additionalCompileOptions');
+    if (Array.isArray(additionalCompileOptions) && additionalCompileOptions.length > 0) {
+        additionalCompileOptions.forEach(function (opt) {
+            clArgs.push('--compiler_flags="' + opt + '"');
+        });
+    }
+    return clArgs;
+};
 
 
 /**
@@ -391,7 +386,7 @@ nclosure.nccompile.prototype.addAdditionalRoots_ = function (addedPaths, clArgs,
  *    duplicate checking.
  * @param {Array.<string>} clArgs The array to add any additional deps to.
  * @param {string} path The path to add as a root or root_with_prefix.
- * @param {boolean}  wPrefix wether to use root_with_prefix.
+ * @param {boolean}  wPrefix whether to use root_with_prefix.
  */
 nclosure.nccompile.prototype.addRoot_ = function (addedPaths, clArgs, path, wPrefix) {
     var realpath = this.isPathInMap_(addedPaths, path);
@@ -465,7 +460,8 @@ nclosure.nccompile.prototype.getDepsClArgs_ = function () {
  *    then added to the specified map and we return the real path of the file;.
  */
 nclosure.nccompile.prototype.isPathInMap_ = function (map, s) {
-    var real = FS.realpathSync(s);
+    //var real = FS.realpathSync(s);
+    var real = PATH.resolve(s);
     if (goog.array.find(map, function (m) {
         return real.indexOf(m) >= 0;
     })) {
