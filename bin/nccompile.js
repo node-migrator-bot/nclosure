@@ -132,7 +132,7 @@ nclosure.nccompile.prototype.init_ = function (cliArgs, options) {
 //                process.exit();
 //            }
 //        });
-//        tty.setRawMode(true);
+//        process.stdin.setRawMode(true);
     } else {
         process.on('SIGINT', onexit);
     }
